@@ -1,18 +1,36 @@
-# Dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+# ----------------------------
+# Build Stage
+# ----------------------------
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY *.csproj ./
+# Copy solution and project
+COPY dotnet-hello-world.sln ./
+COPY hello-world-api/hello-world-api.csproj ./hello-world-api/
+
+# Restore dependencies
 RUN dotnet restore
 
-COPY . ./
-RUN dotnet publish -c Release -o /app --no-restore
+# Copy all source files
+COPY . .
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS runtime
+# Build and publish release version
+RUN dotnet publish hello-world-api/hello-world-api.csproj -c Release -o /app/publish
+
+# ----------------------------
+# Runtime Stage
+# ----------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app ./
 
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
+# Ensure ASP.NET listens on all network interfaces
+ENV ASPNETCORE_URLS=http://0.0.0.0:80
 
-ENTRYPOINT ["dotnet", "hello-world.dll"]
+# Copy the published files from the build stage
+COPY --from=build /app/publish .
+
+# Expose port 80 in container
+EXPOSE 80
+
+# Run the application
+ENTRYPOINT ["dotnet", "hello-world-api.dll"]
