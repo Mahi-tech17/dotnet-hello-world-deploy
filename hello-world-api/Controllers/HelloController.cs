@@ -1,20 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿// using System;
+// using System.Collections.Generic;
+// using System.Linq;
+// using System.Threading.Tasks;
+// using Microsoft.AspNetCore.Mvc;
+
+// namespace hello_world_api.Controllers
+// {
+//     [Route("api/[controller]")]
+//     public class HelloController : Controller
+//     {
+//         // GET api/helllo
+//         [HttpGet]
+//         public string Get()
+//         {
+//             return "Hello world!!!!!!";
+//         }
+
+//     }
+// }
+
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace hello_world_api.Controllers
 {
+    [ApiController]
     [Route("api/[controller]")]
-    public class HelloController : Controller
+    public class HelloController : ControllerBase
     {
-        // GET api/helllo
         [HttpGet]
-        public string Get()
+        public IActionResult Get()
         {
-            return "Hello world!!!!!!";
+            return Ok("Hello world!!!!!!");
         }
-
     }
 }
