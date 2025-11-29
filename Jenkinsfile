@@ -2,34 +2,37 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-cred') // Add in Jenkins
-        AWS_CREDENTIALS = credentials('aws-cred') // Add in Jenkins
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')  
+        DOCKER_IMAGE = 'helloworld-api'
+        AWS_EC2_UAT = 'ec2-user@3.234.209.248'
+        SSH_KEY = '/var/lib/jenkins/.ssh/id_rsa' 
     }
 
     parameters {
-        choice(name: 'ENV', choices: ['UAT', 'PROD'], description: 'Select Deployment Environment')
+        choice(name: 'ENV', choices: ['UAT'], description: 'Select Deployment Environment')
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/YOUR_GITHUB_ACCOUNT/dotnet-hello-world.git', branch: 'main'
+                git branch: 'main', url: 'https://github.com/Mahi-tech17/dotnet-hello-world-deploy.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("yourdockerhubusername/hello-world-api:${params.ENV}")
+                    docker.build("${DOCKER_IMAGE}:latest")
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'DOCKER_HUB_CREDENTIALS') {
-                        dockerImage.push()
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-cred') {
+                        docker.image("${DOCKER_IMAGE}:latest").push()
                     }
                 }
             }
@@ -38,21 +41,26 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    def ec2_ip = params.ENV == 'UAT' ? 'UAT_EC2_IP' : 'PROD_EC2_IP'
-                    def ssh_user = 'ec2-user' // or your user
-
+                    def ec2_target = AWS_EC2_UAT
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${ssh_user}@${ec2_ip} '
-                        docker pull yourdockerhubusername/hello-world-api:${params.ENV}
-                        docker stop hello-world-api || true
-                        docker rm hello-world-api || true
-                        docker run -d -p 5000:5000 --name hello-world-api yourdockerhubusername/hello-world-api:${params.ENV}
+                    ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${ec2_target} '
+                        docker pull mahi421/${DOCKER_IMAGE}:latest
+                        docker stop ${DOCKER_IMAGE} || true
+                        docker rm ${DOCKER_IMAGE} || true
+                        docker run -d -p 8080:80 --name ${DOCKER_IMAGE} mahi421/${DOCKER_IMAGE}:latest
                     '
                     """
                 }
             }
         }
     }
+
+    post {
+        success {
+            echo "Deployment Successful to ${params.ENV}!"
+        }
+        failure {
+            echo "Deployment Failed!"
+        }
+    }
 }
-
-
